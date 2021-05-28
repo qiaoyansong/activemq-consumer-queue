@@ -15,15 +15,16 @@ public class Main {
     private static final String QUEUE_NAME = "queue1";
 
     public static void main(String[] args) {
+        testConsumerUseReceive();
     }
 
     /**
      * 测试有队列模型中有两个consumer时的消息消费情况
      */
-    private static void test1(){
+    private static void test1() {
         new Thread(() -> {
             System.out.println("我是消费者" + Thread.currentThread().getName());
-            XAConnection connection = null;
+            Connection connection = null;
             Session session = null;
             MessageConsumer consumer = null;
             try {
@@ -38,7 +39,7 @@ public class Main {
                 while (true) {
                     TextMessage message = (TextMessage) consumer.receive();
                     if (message != null) {
-                        System.out.println("消费者"+Thread.currentThread().getName()+"收到的消息是" + message.getText());
+                        System.out.println("消费者" + Thread.currentThread().getName() + "收到的消息是" + message.getText());
                     } else {
                         break;
                     }
@@ -71,7 +72,7 @@ public class Main {
         }, "1").start();
         new Thread(() -> {
             System.out.println("我是消费者" + Thread.currentThread().getName());
-            XAConnection connection = null;
+            Connection connection = null;
             Session session = null;
             MessageConsumer consumer = null;
             try {
@@ -86,7 +87,7 @@ public class Main {
                 while (true) {
                     TextMessage message = (TextMessage) consumer.receive();
                     if (message != null) {
-                        System.out.println("消费者"+Thread.currentThread().getName()+"收到的消息是" + message.getText());
+                        System.out.println("消费者" + Thread.currentThread().getName() + "收到的消息是" + message.getText());
                     } else {
                         break;
                     }
@@ -122,23 +123,23 @@ public class Main {
     /**
      * 消费者使用receive接受消息
      */
-    private static void testConsumerUseReceive(){
-        XAConnection connection = null;
+    private static void testConsumerUseReceive() {
+        Connection connection = null;
         Session session = null;
         MessageConsumer consumer = null;
         try {
             connection = ActiveMqUtil.getConnection();
-            connection.start();
             // 创建Session，有两个参数，分别是是否开启事务、签收
             session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             // 创建目的地（可以是队列也可以是Topic）
             Queue queue = session.createQueue(QUEUE_NAME);
             // 创建消息消费者
             consumer = session.createConsumer(queue);
+            connection.start();
             // 消费者应该一直等待接受消息
             while (true) {
                 // 如果超过了1s还没有收到消息，就不在接受了
-                TextMessage message = (TextMessage)consumer.receive(1000);
+                TextMessage message = (TextMessage) consumer.receive(1000);
                 if (message != null) {
                     System.out.println("消费者收到的消息是" + message.getText());
                 } else {
@@ -175,8 +176,8 @@ public class Main {
     /**
      * 消费者使用listener接受消息
      */
-    private static void testConsumerUseListener(){
-        XAConnection connection = null;
+    private static void testConsumerUseListener() {
+        Connection connection = null;
         Session session = null;
         MessageConsumer consumer = null;
         try {
@@ -191,7 +192,7 @@ public class Main {
             consumer.setMessageListener(new MessageListener() {
                 @Override
                 public void onMessage(Message message) {
-                    if(message != null && message instanceof TextMessage){
+                    if (message != null && message instanceof TextMessage) {
                         TextMessage textMessage = (TextMessage) message;
                         try {
                             System.out.println("消费者收到的消息是" + textMessage.getText());
@@ -231,4 +232,62 @@ public class Main {
             }
         }
     }
+
+    /**
+     * 消费者使用receive接受消息，并且添加事务
+     */
+    private static void testConsumerUseReceiveWithTx() {
+        Connection connection = null;
+        Session session = null;
+        MessageConsumer consumer = null;
+        try {
+            connection = ActiveMqUtil.getConnection();
+            connection.start();
+            // 创建Session，有两个参数，分别是是否开启事务、签收
+            session = connection.createSession(true, Session.AUTO_ACKNOWLEDGE);
+            // 创建目的地（可以是队列也可以是Topic）
+            Queue queue = session.createQueue(QUEUE_NAME);
+            // 创建消息消费者
+            consumer = session.createConsumer(queue);
+            while (true) {
+                TextMessage receive = (TextMessage) consumer.receive(1000L);
+                if (receive != null) {
+                    System.out.println("消费者获取到的消息是" + receive.getText());
+                } else {
+                    break;
+                }
+            }
+            session.commit();
+        } catch (JMSException e) {
+            e.printStackTrace();
+            try {
+                session.rollback();
+            } catch (JMSException jmsException) {
+                jmsException.printStackTrace();
+            }
+        } finally {
+            if (consumer != null) {
+                try {
+                    consumer.close();
+                } catch (JMSException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (session != null) {
+                try {
+                    session.close();
+                } catch (JMSException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (JMSException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
 }

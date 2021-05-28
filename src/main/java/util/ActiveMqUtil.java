@@ -1,9 +1,9 @@
 package util;
 
-import org.apache.activemq.ActiveMQXAConnectionFactory;
+import org.apache.activemq.ActiveMQConnectionFactory;
 
+import javax.jms.Connection;
 import javax.jms.JMSException;
-import javax.jms.XAConnection;
 
 /**
  * @author ：Qiao Yansong
@@ -19,9 +19,9 @@ public class ActiveMqUtil {
 
     }
 
-    public static XAConnection getConnection() throws JMSException {
-        ActiveMQXAConnectionFactory factory = new ActiveMQXAConnectionFactory(ACTIVE_MQ_URL);
-        XAConnection xaConnection = factory.createXAConnection();
-        return xaConnection;
+    public static Connection getConnection() throws JMSException {
+        ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(ACTIVE_MQ_URL);
+        Connection connection = factory.createConnection();
+        return connection;
     }
 }
